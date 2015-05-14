@@ -36,19 +36,28 @@ class VirtualboxSystrayLauncher:
 
         # create static menu items and add them to a list
         # we can reference when [re]loading dynamic items
-        self.static_menuitem_labels = []
+        self.static_menuitems = []
+
+        separator_menuitem = gtk.SeparatorMenuItem()
+        self.menu.append(separator_menuitem)
+        self.static_menuitems.append(separator_menuitem)
+
+        launch_vbox_menuitem = gtk.MenuItem('Launch Virtualbox')
+        launch_vbox_menuitem.connect('activate', self.launch_vbox)
+        self.menu.append(launch_vbox_menuitem)
+        self.static_menuitems.append(launch_vbox_menuitem)
 
         about_menuitem = gtk.MenuItem('About')
-        about_menuitem.show()
         about_menuitem.connect('activate', self.show_about_dialog)
         self.menu.append(about_menuitem)
-        self.static_menuitem_labels.append('About')
+        self.static_menuitems.append(about_menuitem)
 
         quit_menuitem = gtk.MenuItem('Quit')
-        quit_menuitem.show()
         quit_menuitem.connect('activate', gtk.main_quit)
         self.menu.append(quit_menuitem)
-        self.static_menuitem_labels.append('Quit')
+        self.static_menuitems.append(quit_menuitem)
+
+        self.menu.show_all()
 
         # kick off the dynamic part of the menu
         self.reload_dynamic_items()
@@ -63,9 +72,8 @@ class VirtualboxSystrayLauncher:
 
     def rebuild_menu(self):
         current_menuitems = self.menu.get_children()
-        num_menuitems = len(current_menuitems)
         for menuitem in current_menuitems:
-            if not menuitem.get_label() in self.static_menuitem_labels:
+            if not menuitem in self.static_menuitems:
                 self.menu.remove(menuitem)
 
         item_index = 0
@@ -75,6 +83,8 @@ class VirtualboxSystrayLauncher:
             new_menuitem.connect('activate', self.run_vm, vm_guid)
             self.menu.insert(new_menuitem, item_index)
             item_index += 1
+
+        self.menu.show_all()
 
     def update_vm_list(self):
         try :
@@ -105,6 +115,9 @@ class VirtualboxSystrayLauncher:
         about_dialog.set_authors(['Matthew Morgan <matthew@lifandi.org>'])
         about_dialog.run()
         about_dialog.destroy()
+
+    def launch_vbox(self, widget):
+        subprocess.Popen(['virtualbox'])
 
     def run_vm(self, widget, vm_guid):
         print "Running vm \"%s\" %s" % (self.vm_list[vm_guid], vm_guid)
