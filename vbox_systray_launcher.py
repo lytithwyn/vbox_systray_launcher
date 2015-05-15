@@ -95,7 +95,6 @@ class VboxSystrayLauncher:
             for line in vm_lines_list:
                 vm_re_match = vm_regex.search(line)
                 if vm_re_match:
-                    print "Found %s at %s" % (vm_re_match.group(1), vm_re_match.group(2))
                     self.vm_list[vm_re_match.group(2)] = vm_re_match.group(1)
         except Exception, e:
             print "Got exception: %s" % e
@@ -120,7 +119,6 @@ class VboxSystrayLauncher:
         subprocess.Popen(['virtualbox'])
 
     def run_vm(self, widget, vm_guid):
-        print "Running vm \"%s\" %s" % (self.vm_list[vm_guid], vm_guid)
         subprocess.Popen(["vboxmanage", "startvm", vm_guid])
 
 if __name__ == "__main__":
