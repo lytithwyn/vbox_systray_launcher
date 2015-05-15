@@ -11,7 +11,7 @@ Dependencies:
  * python 2.7 (might work with 3, haven't tested)
  * pygtk
 
-This program was inspired by cinnamon-vbox-launcher ([github][launcher_github] [cinnamon spices][spice]) by [mockturtl][mockturtl_github].  I mainly wanted a version that would
+This program was inspired by cinnamon-vbox-launcher ([github][launcher_github] / [cinnamon spices][spice]) by [mockturtl][mockturtl_github].  I mainly wanted a version that would
 work in Openbox, which is the WM I work with when I'm cheating on Cinnamon.  ;)
 
 [launcher_github]: https://github.com/mockturtl/cinnamon-vbox-launcher
