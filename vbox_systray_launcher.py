@@ -23,7 +23,7 @@ import glib
 import subprocess
 import re
 
-class VirtualboxSystrayLauncher:
+class VboxSystrayLauncher:
     def __init__(self):
         self.vm_list = {}
         self.menu = None
@@ -124,5 +124,5 @@ class VirtualboxSystrayLauncher:
         subprocess.Popen(["vboxmanage", "startvm", vm_guid])
 
 if __name__ == "__main__":
-    VirtualboxSystrayLauncher()
+    VboxSystrayLauncher()
     gtk.main()
