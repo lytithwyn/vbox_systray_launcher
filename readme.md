@@ -4,7 +4,7 @@ icon that, when right-clicked, will present a list of virtual machines to run al
 that will let you run the main VirtualBox interface.
 
 Features:
- * Automatically polls vboxmanage for the list of virtual machines ever 10 seconds
+ * Automatically polls vboxmanage for the list of virtual machines every 10 seconds
  * Uses VirtualBox icon from the current icon theme, so is themeable
 
 Dependencies:
