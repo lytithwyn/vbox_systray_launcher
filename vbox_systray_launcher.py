@@ -29,7 +29,7 @@ class VboxSystrayLauncher:
         self.menu = None
         self.tray = gtk.StatusIcon()
         self.tray.set_from_icon_name('virtualbox')
-        self.tray.connect('popup-menu', self.show_menu)
+        self.tray.connect('button_press_event', self.handle_button_press)
         self.tray.set_tooltip('Virtualbox Systray Launcher')
 
         self.menu = gtk.Menu()
@@ -98,6 +98,9 @@ class VboxSystrayLauncher:
                     self.vm_list[vm_re_match.group(2)] = vm_re_match.group(1)
         except Exception, e:
             print "Got exception: %s" % e
+
+    def handle_button_press(self, icon, event):
+        self.show_menu(icon, event.button, event.time)
 
     def show_menu(self, icon, event_button, event_time):
         self.menu.popup(None, None, gtk.status_icon_position_menu,
