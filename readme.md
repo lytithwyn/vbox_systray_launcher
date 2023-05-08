@@ -8,8 +8,8 @@ Features:
  * Uses VirtualBox icon from the current icon theme, so is themeable
 
 Dependencies:
- * python 2.7 (might work with 3, haven't tested)
- * pygtk
+ * python3
+ * gtk3 and glib for python3
 
 This program was inspired by cinnamon-vbox-launcher ([github][launcher_github] / [cinnamon spices][spice]) by [mockturtl][mockturtl_github].  I mainly wanted a version that would
 work in Openbox, which is the WM I work with when I'm cheating on Cinnamon.  ;)
