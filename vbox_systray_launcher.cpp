@@ -1,47 +1,34 @@
-#include <iostream>
-#include <wx/wx.h>
-#include <wx/taskbar.h>
-#include <wx/artprov.h>
+#include "vbox_systray_launcher.h"
 
-enum VBTBI_MENU_ID {
-    MID_QUIT = 100
-};
+static HiddenDialog* globalDialog = nullptr;
 
-/*=======================================================*/
-// VBoxTaskBarIcon
-/*=======================================================*/
-class VBoxTaskBarIcon : public wxTaskBarIcon {
-    public:
-        VBoxTaskBarIcon();
-        ~VBoxTaskBarIcon();
-        virtual wxMenu* GetPopupMenu();
-        void OnQuit(wxCommandEvent& event);
-
-    private:
-        wxMenu* vmMenu;
-        wxTaskBarIcon* tbIcon;
-        wxIcon* iconImage;
-
-        wxDECLARE_EVENT_TABLE();
-};
+wxIMPLEMENT_APP(VBoxSTL);
 
 wxBEGIN_EVENT_TABLE(VBoxTaskBarIcon, wxTaskBarIcon)
-    EVT_MENU(MID_QUIT, VBoxTaskBarIcon::OnQuit)
+    EVT_MENU(MID_QUIT, VBoxTaskBarIcon::OnMenuQuit)
+    EVT_MENU(MID_LAUNCH_VBOX, VBoxTaskBarIcon::OnMenuLaunchVBoxApp)
+    EVT_MENU(MID_LAUNCH_VM, VBoxTaskBarIcon::OnMenuLaunchVM)
+    EVT_MENU(MID_QUIT, VBoxTaskBarIcon::OnMenuQuit)
 wxEND_EVENT_TABLE()
 
-VBoxTaskBarIcon::VBoxTaskBarIcon() {
+VBoxTaskBarIcon::VBoxTaskBarIcon() : wxTaskBarIcon(wxTBI_DEFAULT_TYPE) {
     this->tbIcon = nullptr;
     this->iconImage = nullptr;
-    this->vmMenu = nullptr;
-
-    this->tbIcon = new wxTaskBarIcon();
     this->iconImage = new wxIcon();
     this->iconImage->CopyFromBitmap(wxArtProvider::GetBitmap("virtualbox", wxART_OTHER, wxSize(32,32)));
-    this->tbIcon->SetIcon(*(this->iconImage));
+    this->SetIcon(*(this->iconImage));
 }
 
-void VBoxTaskBarIcon::OnQuit(wxCommandEvent& WXUNUSED(event)) {
-    wxTheApp->ExitMainLoop();
+void VBoxTaskBarIcon::OnMenuLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
+    return;
+}
+
+void VBoxTaskBarIcon::OnMenuLaunchVM(wxCommandEvent& event) {
+    return;
+}
+
+void VBoxTaskBarIcon::OnMenuQuit(wxCommandEvent& WXUNUSED(event)) {
+    globalDialog->OnQuit();
 }
 
 VBoxTaskBarIcon::~VBoxTaskBarIcon() {
@@ -52,44 +39,14 @@ VBoxTaskBarIcon::~VBoxTaskBarIcon() {
     if(this->iconImage != nullptr) {
         delete iconImage;
     }
-
-    if(this->vmMenu != nullptr) {
-        delete this->vmMenu;
-    }
 }
 
-wxMenu* VBoxTaskBarIcon::GetPopupMenu() {
-    std::cout << "Requesting menu" << std::endl;
-    if(this->vmMenu == nullptr) {
-        std::cout << "Building menu" << std::endl;
-        this->vmMenu = new wxMenu();
-        this->vmMenu->Append(MID_QUIT, "Quit");
-    }
+wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
+    std::cout << "Building menu" << std::endl;
+    wxMenu* vmMenu = new wxMenu();
+    vmMenu->Append(MID_QUIT, "Quit");
 
-    return this->vmMenu;
-}
-
-/*=======================================================*/
-/*=======================================================*/
-
-
-/*=======================================================*/
-// VBoxSTL
-/*=======================================================*/
-class VBoxSTL : public wxApp {
-    public:
-        VBoxSTL();
-        ~VBoxSTL();
-        bool OnInit() override;
-
-    private:
-        VBoxTaskBarIcon* vbtbIcon;
-};
-
-wxIMPLEMENT_APP(VBoxSTL);
-
-VBoxSTL::VBoxSTL() {
-    this->vbtbIcon = nullptr;
+    return vmMenu;
 }
 
 bool VBoxSTL::OnInit() {
@@ -100,21 +57,29 @@ bool VBoxSTL::OnInit() {
     if(!wxTaskBarIcon::IsAvailable()) {
         // there is no taskbar (system tray) support avaiable right now
         // might as well just quit
+        wxMessageBox
+        (
+            "There appears to be no system tray support in your current environment. Exiting!",
+            "Error",
+            wxOK | wxICON_EXCLAMATION
+        );
         return false;
     }
 
-    this->vbtbIcon = new VBoxTaskBarIcon();
-
-    std::cout << "Testing..." << std::endl;
+    globalDialog = new HiddenDialog();
+    globalDialog->Show();
 
     return true;
 }
 
-VBoxSTL::~VBoxSTL() {
-    if(this->vbtbIcon != nullptr) {
-        delete this->vbtbIcon;
-    }
+HiddenDialog::HiddenDialog() : wxDialog(nullptr, wxID_ANY, "") {
+    this->vbtbIcon = new VBoxTaskBarIcon();
 }
 
-/*=======================================================*/
-/*=======================================================*/
+HiddenDialog::~HiddenDialog() {
+    delete this->vbtbIcon;
+}
+
+wxBEGIN_EVENT_TABLE(HiddenDialog, wxDialog)
+    EVT_CLOSE(HiddenDialog::OnCloseWindow)
+wxEND_EVENT_TABLE()
