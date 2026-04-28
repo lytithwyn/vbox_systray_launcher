@@ -1,7 +1,5 @@
 #include "vbox_systray_launcher.h"
 
-static HiddenDialog* globalDialog = nullptr;
-
 wxIMPLEMENT_APP(VBoxSTL);
 
 wxBEGIN_EVENT_TABLE(VBoxTaskBarIcon, wxTaskBarIcon)
@@ -12,8 +10,6 @@ wxBEGIN_EVENT_TABLE(VBoxTaskBarIcon, wxTaskBarIcon)
 wxEND_EVENT_TABLE()
 
 VBoxTaskBarIcon::VBoxTaskBarIcon() : wxTaskBarIcon(wxTBI_DEFAULT_TYPE) {
-    this->tbIcon = nullptr;
-    this->iconImage = nullptr;
     this->iconImage = new wxIcon();
     this->iconImage->CopyFromBitmap(wxArtProvider::GetBitmap("virtualbox", wxART_OTHER, wxSize(32,32)));
     this->SetIcon(*(this->iconImage));
@@ -28,14 +24,10 @@ void VBoxTaskBarIcon::OnMenuLaunchVM(wxCommandEvent& event) {
 }
 
 void VBoxTaskBarIcon::OnMenuQuit(wxCommandEvent& WXUNUSED(event)) {
-    globalDialog->OnQuit();
+    wxGetApp().ExitMainLoop();
 }
 
 VBoxTaskBarIcon::~VBoxTaskBarIcon() {
-    if(this->tbIcon != nullptr) {
-        delete tbIcon;
-    }
-
     if(this->iconImage != nullptr) {
         delete iconImage;
     }
@@ -66,20 +58,12 @@ bool VBoxSTL::OnInit() {
         return false;
     }
 
-    globalDialog = new HiddenDialog();
-    globalDialog->Show();
+    this->vbtbIcon = new VBoxTaskBarIcon();
 
     return true;
 }
 
-HiddenDialog::HiddenDialog() : wxDialog(nullptr, wxID_ANY, "") {
-    this->vbtbIcon = new VBoxTaskBarIcon();
-}
-
-HiddenDialog::~HiddenDialog() {
+int VBoxSTL::OnExit() {
     delete this->vbtbIcon;
+    return 0;
 }
-
-wxBEGIN_EVENT_TABLE(HiddenDialog, wxDialog)
-    EVT_CLOSE(HiddenDialog::OnCloseWindow)
-wxEND_EVENT_TABLE()
