@@ -17,6 +17,8 @@ enum APP_EVENT_ID {
     AID_TIMER
 };
 
+class VBoxSTL;
+
 class VBoxManagerThread : public wxThread {
     public:
         VBoxManagerThread(wxEvtHandler* owner, int eventID) { this->owner = owner; this->eventID = eventID; };
@@ -29,20 +31,15 @@ class VBoxManagerThread : public wxThread {
 
 class VBoxTaskBarIcon : public wxTaskBarIcon {
     public:
-        VBoxTaskBarIcon();
+        VBoxTaskBarIcon(VBoxSTL* owner);
         virtual ~VBoxTaskBarIcon();
         virtual wxMenu *CreatePopupMenu();
         void SetVMList(std::map<std::string, std::string> vmList);
 
     protected:
-        void OnMenuLaunchVM(wxCommandEvent& event);
-        void OnMenuLaunchVBoxApp(wxCommandEvent& event);
-        void OnMenuQuit(wxCommandEvent& event);
-
+        VBoxSTL* owner;
         wxIcon* iconImage;
         std::map<std::string, std::string>* vmList;
-
-    wxDECLARE_EVENT_TABLE();
 };
 
 class VBoxSTL : public wxApp {
@@ -50,6 +47,9 @@ class VBoxSTL : public wxApp {
         VBoxSTL();
         bool OnInit() override;
         int OnExit() override;
+        void OnLaunchVM(wxCommandEvent& event);
+        void OnLaunchVBoxApp(wxCommandEvent& event);
+        void OnQuit(wxCommandEvent& event);
 
     private:
         VBoxTaskBarIcon* vbtbIcon;

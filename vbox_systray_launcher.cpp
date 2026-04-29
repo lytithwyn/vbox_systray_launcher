@@ -4,30 +4,28 @@ wxIMPLEMENT_APP(VBoxSTL);
 
 wxDEFINE_EVENT(EVT_UPDATE_READY, wxCommandEvent);
 
-wxBEGIN_EVENT_TABLE(VBoxTaskBarIcon, wxTaskBarIcon)
-    EVT_MENU(MID_QUIT, VBoxTaskBarIcon::OnMenuQuit)
-    EVT_MENU(MID_LAUNCH_VBOX, VBoxTaskBarIcon::OnMenuLaunchVBoxApp)
-    EVT_MENU(MID_LAUNCH_VM, VBoxTaskBarIcon::OnMenuLaunchVM)
-    EVT_MENU(MID_QUIT, VBoxTaskBarIcon::OnMenuQuit)
-wxEND_EVENT_TABLE()
-
-VBoxTaskBarIcon::VBoxTaskBarIcon() : wxTaskBarIcon(wxTBI_DEFAULT_TYPE) {
+VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_TYPE) {
+    this->owner = owner;
     this->iconImage = new wxIcon();
     this->iconImage->CopyFromBitmap(wxArtProvider::GetBitmap("virtualbox", wxART_OTHER, wxSize(32,32)));
     this->SetIcon(*(this->iconImage));
     this->vmList = nullptr;
+
+    Bind(wxEVT_MENU, &VBoxSTL::OnQuit, owner, MID_QUIT);
+    Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVBoxApp, owner, MID_LAUNCH_VBOX);
+    Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVM, owner, MID_LAUNCH_VM);
 }
 
-void VBoxTaskBarIcon::OnMenuLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
+void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
     return;
 }
 
-void VBoxTaskBarIcon::OnMenuLaunchVM(wxCommandEvent& event) {
+void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
     return;
 }
 
-void VBoxTaskBarIcon::OnMenuQuit(wxCommandEvent& WXUNUSED(event)) {
-    wxGetApp().ExitMainLoop();
+void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
+    this->ExitMainLoop();
 }
 
 VBoxTaskBarIcon::~VBoxTaskBarIcon() {
@@ -72,7 +70,7 @@ bool VBoxSTL::OnInit() {
         return false;
     }
 
-    this->vbtbIcon = new VBoxTaskBarIcon();
+    this->vbtbIcon = new VBoxTaskBarIcon(this);
     this->PerformVMListUpdate();
 
     return true;
