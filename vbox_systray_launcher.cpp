@@ -182,13 +182,33 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
 
 wxThread::ExitCode VBoxManagerThread::Entry() {
     std::cout << "In manager thread" << std::endl;
-    this->Sleep(1500);
-    std::cout << "Thread finished sleep" << std::endl;
+
+    std::cout << "Attempting to read data from pipe" << std::endl;
+    int bytesRead = 0;
+    size_t readBufSize = 128;
+    char readBuf[readBufSize];
+    std::stringstream vbmOutput;
+    while(true) {
+        bytesRead = read(readFD, readBuf, readBufSize);
+        std::cout << "Got data" << std::endl;
+        if(bytesRead <= 0) {
+            // TODO error handling - probably fire an event to main thread
+            break;
+        } else if(bytesRead == 0) {
+            // EOF
+            break;
+        } else {
+            vbmOutput << readBuf;
+        }
+    }
+    close(readFD);
+
+    for(std::string line; std::getline(vbmOutput, line); ) {
+        std::cout << "Got line: " << line << std::endl;
+    }
 
     std::map<std::string, std::string>* vmList = new std::map<std::string, std::string>();
     (*vmList)["{3443-1234asdf-2ff542r-fasdfqwer}"] = "Windows 7 Pro";
-    (*vmList)["{4443-1234asdf-2ff542r-fasdfqwer}"] = "FreeBSD";
-    (*vmList)["{73443-1234asdf-2ff542r-fasdfqwer}"] = "OpenSuse Linux";
 
     wxCommandEvent* retEvent = new wxCommandEvent(this->eventID);
     retEvent->SetClientData((void*) vmList);

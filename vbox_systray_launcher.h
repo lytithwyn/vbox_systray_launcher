@@ -25,7 +25,7 @@ class VBoxSTL;
 
 class VBoxManagerThread : public wxThread {
     public:
-        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) { this->owner = owner; this->eventID = eventID; };
+        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) { this->owner = owner; this->eventID = eventID; this->readFD = readFD; };
         virtual wxThread::ExitCode Entry();
 
     private:
@@ -33,6 +33,7 @@ class VBoxManagerThread : public wxThread {
 
         wxEvtHandler* owner;
         int eventID;
+        int readFD;
 };
 
 class VBoxTaskBarIcon : public wxTaskBarIcon {
