@@ -1,9 +1,11 @@
 #include <iostream>
+#include <unistd.h>
+#include <sys/types.h>
+#include <map>
+#include <string>
 #include <wx/wx.h>
 #include <wx/taskbar.h>
 #include <wx/artprov.h>
-#include <map>
-#include <string>
 
 wxDECLARE_EVENT(EVT_UPDATE_READY, wxCommandEvent);
 
@@ -58,6 +60,7 @@ class VBoxSTL : public wxApp {
         void PerformVMListUpdate();
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
+        void LaunchExeFromPath(const char* imageName);
 
     wxDECLARE_EVENT_TABLE();
 };

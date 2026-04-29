@@ -17,6 +17,7 @@ VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_T
 }
 
 void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
+    this->LaunchExeFromPath("virtualbox");
     return;
 }
 
@@ -41,6 +42,7 @@ VBoxTaskBarIcon::~VBoxTaskBarIcon() {
 wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
     std::cout << "Building menu" << std::endl;
     wxMenu* vmMenu = new wxMenu();
+    vmMenu->Append(MID_LAUNCH_VBOX, "Launch Virtualbox");
     vmMenu->Append(MID_QUIT, "Quit");
 
     return vmMenu;
@@ -102,6 +104,32 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
 int VBoxSTL::OnExit() {
     delete this->vbtbIcon;
     return 0;
+}
+
+void VBoxSTL::LaunchExeFromPath(const char* imageName) {
+    int fds[2];
+    if(pipe(fds) != 0) {
+        // TODO exception
+        perror("Failed to create pipe!");
+    }
+
+    pid_t forkResult = fork();
+    if(forkResult < 0) {
+        perror("Failed to fork()");
+        exit(1);
+    } else if(forkResult > 0) {
+        // we're in the parent
+        return;
+    } else if(forkResult == 0) {
+        // we're in the child
+        close(fds[0]);
+        close(fds[1]);
+        if(execlp(imageName, imageName, (char *)0) < 0) {
+            // TODO exception
+            perror("Failed to execl!");
+        }
+    }
+
 }
 
 wxThread::ExitCode VBoxManagerThread::Entry() {
