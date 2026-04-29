@@ -17,7 +17,7 @@ VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_T
 }
 
 void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
-    this->LaunchExeFromPath("virtualbox");
+    this->LaunchExe("virtualbox");
     return;
 }
 
@@ -106,17 +106,17 @@ int VBoxSTL::OnExit() {
     return 0;
 }
 
-void VBoxSTL::LaunchExeFromPath(const char* imageName) {
+void VBoxSTL::LaunchExe(const char* imageName) {
     int fds[2];
     if(pipe(fds) != 0) {
-        // TODO exception
-        perror("Failed to create pipe!");
+        wxMessageBox("Failed to create pipes for the subprocess", "System Error", wxOK | wxICON_EXCLAMATION);
+        return;
     }
 
     pid_t forkResult = fork();
     if(forkResult < 0) {
-        perror("Failed to fork()");
-        exit(1);
+        wxMessageBox("Failed to fork a child PID", "System Error", wxOK | wxICON_EXCLAMATION);
+        return;
     } else if(forkResult > 0) {
         // we're in the parent
         return;
@@ -125,11 +125,10 @@ void VBoxSTL::LaunchExeFromPath(const char* imageName) {
         close(fds[0]);
         close(fds[1]);
         if(execlp(imageName, imageName, (char *)0) < 0) {
-            // TODO exception
-            perror("Failed to execl!");
+            // TODO figure out how to handle an error here since we're in the child
+            exit(-1);
         }
     }
-
 }
 
 wxThread::ExitCode VBoxManagerThread::Entry() {

@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <map>
 #include <string>
+#include <cstring>
+#include <sstream>
 #include <wx/wx.h>
 #include <wx/taskbar.h>
 #include <wx/artprov.h>
@@ -60,7 +62,7 @@ class VBoxSTL : public wxApp {
         void PerformVMListUpdate();
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
-        void LaunchExeFromPath(const char* imageName);
+        void LaunchExe(const char* imageName);
 
     wxDECLARE_EVENT_TABLE();
 };
