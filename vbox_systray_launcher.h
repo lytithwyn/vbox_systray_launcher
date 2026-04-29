@@ -25,10 +25,12 @@ class VBoxSTL;
 
 class VBoxManagerThread : public wxThread {
     public:
-        VBoxManagerThread(wxEvtHandler* owner, int eventID) { this->owner = owner; this->eventID = eventID; };
+        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) { this->owner = owner; this->eventID = eventID; };
         virtual wxThread::ExitCode Entry();
 
     private:
+        void LaunchExeGetOutput(const char* imageName, ...);
+
         wxEvtHandler* owner;
         int eventID;
 };
@@ -63,6 +65,7 @@ class VBoxSTL : public wxApp {
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
         void LaunchExe(const char* imageName);
+        void LaunchExe(const char* imageName, int* readFD, ...);
 
     wxDECLARE_EVENT_TABLE();
 };

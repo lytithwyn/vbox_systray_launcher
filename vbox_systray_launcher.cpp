@@ -84,7 +84,9 @@ void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
 
 void VBoxSTL::PerformVMListUpdate() {
     std::cout << "Kicking off update thread" << std::endl;
-    VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY);
+    int readFD = -1;
+    this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
+    VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD);
     if(updateThread->Create() != wxTHREAD_NO_ERROR) {
         std::cout << "Failed to create thread!" << std::endl;
     }
@@ -107,24 +109,71 @@ int VBoxSTL::OnExit() {
 }
 
 void VBoxSTL::LaunchExe(const char* imageName) {
-    int fds[2];
-    if(pipe(fds) != 0) {
-        wxMessageBox("Failed to create pipes for the subprocess", "System Error", wxOK | wxICON_EXCLAMATION);
-        return;
+    return this->LaunchExe(imageName, nullptr, (void*) 0);
+}
+
+void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
+    // first, get our variable arguments
+    // we'll iterate through one time to get the count, then again to build an array of the arguments
+    va_list argList;
+    va_start(argList, readFD);
+    int numArgs = 0;
+    while(va_arg(argList, const char*) != ((void*)0)) {
+        ++numArgs;
+    }
+    va_end(argList);
+
+    // construct a sufficiently size array and load the image name as the first element of this array
+    char** progArgs = (char**)calloc(numArgs + 1, sizeof(char*));
+    progArgs[0] = (char*)calloc(strlen(imageName) + 1, sizeof(char));
+    strcpy(progArgs[0], imageName);
+
+    // now copy in all the others
+    va_start(argList, readFD);
+    for(int i = 0; i < numArgs; ++i) {
+        const char* thisArg = va_arg(argList, const char*);
+        progArgs[i+1] = (char*)calloc(strlen(thisArg) + 1, sizeof(char));
+        strcpy(progArgs[i+1], thisArg);
+    }
+    va_end(argList);
+
+    int fds[2]{-1};
+    bool wantsFD = (nullptr != readFD);
+
+    if(wantsFD) {
+        if(pipe(fds) != 0) {
+            wxMessageBox("Failed to create pipes for the subprocess", "System Error", wxOK | wxICON_EXCLAMATION);
+            return;
+        }
     }
 
     pid_t forkResult = fork();
     if(forkResult < 0) {
         wxMessageBox("Failed to fork a child PID", "System Error", wxOK | wxICON_EXCLAMATION);
+        if(wantsFD) {
+            close(fds[0]);
+            close(fds[1]);
+            *readFD = -1;
+        }
         return;
     } else if(forkResult > 0) {
         // we're in the parent
+        close(fds[1]); // close the writing end
+        if(wantsFD) {
+            // we have gotten the pipe set up, we've successfully forked, and the caller wants the read FD
+            *readFD = fds[0];
+        }
         return;
     } else if(forkResult == 0) {
         // we're in the child
-        close(fds[0]);
-        close(fds[1]);
-        if(execlp(imageName, imageName, (char *)0) < 0) {
+        if(wantsFD) {
+            close(fds[0]); // close the reading end
+            dup2(fds[1], STDOUT_FILENO);
+            dup2(fds[1], STDERR_FILENO);
+            close(fds[1]);
+        }
+
+        if(execvp(imageName, progArgs) < 0) {
             // TODO figure out how to handle an error here since we're in the child
             exit(-1);
         }
