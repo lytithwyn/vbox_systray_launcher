@@ -5,6 +5,7 @@
 #include <string>
 #include <cstring>
 #include <sstream>
+#include <regex>
 #include <wx/wx.h>
 #include <wx/taskbar.h>
 #include <wx/artprov.h>
@@ -25,15 +26,17 @@ class VBoxSTL;
 
 class VBoxManagerThread : public wxThread {
     public:
-        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) { this->owner = owner; this->eventID = eventID; this->readFD = readFD; };
+        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD);
         virtual wxThread::ExitCode Entry();
 
     private:
         void LaunchExeGetOutput(const char* imageName, ...);
+        bool MatchVMLine(std::string line, std::pair<std::string, std::string>& outPair);
 
         wxEvtHandler* owner;
         int eventID;
         int readFD;
+        std::regex regexVMLine;
 };
 
 class VBoxTaskBarIcon : public wxTaskBarIcon {

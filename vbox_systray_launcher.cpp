@@ -97,8 +97,9 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
     std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
-    auto it = vmList->begin();
-    std::cout << "\tfirst entry: " << it->first << " : " << it->second << std::endl << std::endl;
+    for(const auto& [first, second] : (*vmList)) {
+        std::cout << "\tVM: " << first << " : " << second << std::endl;
+    }
     delete vmList;
     this->timerMenuUpdate.StartOnce(5000);
 }
@@ -184,6 +185,25 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     }
 }
 
+VBoxManagerThread::VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) {
+    this->owner = owner;
+    this->eventID = eventID;
+    this->readFD = readFD;
+    this->regexVMLine = std::regex("\"(.*)\" (\\{.*\\})");
+};
+
+bool VBoxManagerThread::MatchVMLine(std::string line, std::pair<std::string, std::string>& outPair) {
+    std::smatch vmLineMatches;
+
+    if(std::regex_search(line, vmLineMatches, this->regexVMLine)) {
+        outPair.first = vmLineMatches[1];
+        outPair.second = vmLineMatches[2];
+        return true;
+    } else {
+        return false;
+    }
+}
+
 wxThread::ExitCode VBoxManagerThread::Entry() {
     std::cout << "In manager thread" << std::endl;
 
@@ -208,12 +228,13 @@ wxThread::ExitCode VBoxManagerThread::Entry() {
     }
     close(readFD);
 
-    for(std::string line; std::getline(vbmOutput, line); ) {
-        std::cout << "Got line: " << line << std::endl;
-    }
-
     std::map<std::string, std::string>* vmList = new std::map<std::string, std::string>();
-    (*vmList)["{3443-1234asdf-2ff542r-fasdfqwer}"] = "Windows 7 Pro";
+    for(std::string line; std::getline(vbmOutput, line); ) {
+        std::pair<std::string, std::string> outPair;
+        if(this->MatchVMLine(line, outPair)) {
+            (*vmList)[outPair.second] = outPair.first;
+        }
+    }
 
     wxCommandEvent* retEvent = new wxCommandEvent(this->eventID);
     retEvent->SetClientData((void*) vmList);
