@@ -46,18 +46,17 @@ class VBoxTaskBarIcon : public wxTaskBarIcon {
         VBoxTaskBarIcon(VBoxSTL* owner);
         virtual ~VBoxTaskBarIcon();
         virtual wxMenu *CreatePopupMenu();
-        void SetVMList(std::map<std::string, std::string>* vmList);
-        std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
 
     protected:
         VBoxSTL* owner;
         wxIcon* iconImage;
-        std::map<std::string, std::string>* vmList;
 };
 
 class VBoxSTL : public wxApp {
     public:
         VBoxSTL();
+        const std::map<std::string, std::string>* GetVMList() { return this->vmList; };
+        void SetVMList(std::map<std::string, std::string>* vmList);
         bool OnInit() override;
         int OnExit() override;
         void OnLaunchVM(wxCommandEvent& event);
@@ -67,8 +66,10 @@ class VBoxSTL : public wxApp {
     private:
         VBoxTaskBarIcon* vbtbIcon;
         wxTimer timerMenuUpdate;
+        std::map<std::string, std::string>* vmList;
 
         void PerformVMListUpdate();
+        std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
         void LaunchExe(const char* imageName);

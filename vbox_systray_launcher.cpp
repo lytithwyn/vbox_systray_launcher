@@ -9,7 +9,6 @@ VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_T
     this->iconImage = new wxIcon();
     this->iconImage->CopyFromBitmap(wxArtProvider::GetBitmap("virtualbox", wxART_OTHER, wxSize(32,32)));
     this->SetIcon(*(this->iconImage));
-    this->vmList = nullptr;
 
     Bind(wxEVT_MENU, &VBoxSTL::OnQuit, owner, MID_QUIT);
     Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVBoxApp, owner, MID_LAUNCH_VBOX);
@@ -26,7 +25,7 @@ void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
 
     std::string guid;
     try {
-        std::pair<std::string, std::string> vmPair = this->vbtbIcon->GetVMAtIndex(vmIndex);
+        std::pair<std::string, std::string> vmPair = this->GetVMAtIndex(vmIndex);
         guid = vmPair.first;
     } catch(const std::runtime_error& e) {
         wxMessageBox(e.what(), "Error", wxOK | wxICON_EXCLAMATION);
@@ -50,7 +49,8 @@ wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
     // while we are clicking in the menu there might be a difference between when
     // this list gets built and when the event handler for launching the vm gets run
     int vmIndex = 0;
-    for(auto& [guid, name] : *(this->vmList)) {
+    const std::map<std::string, std::string>* vmList = this->owner->GetVMList();
+    for(auto const& [guid, name] : *vmList) {
         vmMenu->Append(MID_LAUNCH_VM + vmIndex, name);
         ++vmIndex;
     }
@@ -61,35 +61,11 @@ wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
     return vmMenu;
 }
 
-void VBoxTaskBarIcon::SetVMList(std::map<std::string, std::string>* vmList) {
-    if(this->vmList != nullptr) {
-        delete this->vmList;
-    }
-
-    this->vmList = vmList;
-}
-
-std::pair<std::string, std::string> VBoxTaskBarIcon::GetVMAtIndex(unsigned int index) {
-    if(index >= this->vmList->size()) {
-        throw(std::runtime_error("The requested index is out of range in the list of VM's"));
-    }
-
-    std::map<std::string, std::string>::iterator it = this->vmList->begin();
-    for(unsigned int i = 0; i < index; ++i) {
-        ++it;
-    }
-
-    return *it;
-}
-
 VBoxTaskBarIcon::~VBoxTaskBarIcon() {
     if(this->iconImage != nullptr) {
         delete iconImage;
     }
 
-    if(this->vmList != nullptr) {
-        delete this->vmList;
-    }
 }
 
 wxBEGIN_EVENT_TABLE(VBoxSTL, wxApp)
@@ -116,6 +92,7 @@ bool VBoxSTL::OnInit() {
         return false;
     }
 
+    this->vmList = nullptr;
     this->vbtbIcon = new VBoxTaskBarIcon(this);
     this->PerformVMListUpdate();
 
@@ -145,11 +122,36 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
         std::cout << "\tVM: " << first << " : " << second << std::endl;
     }
 
-    this->vbtbIcon->SetVMList(vmList);
+    this->SetVMList(vmList);
     this->timerMenuUpdate.StartOnce(5000);
 }
 
+void VBoxSTL::SetVMList(std::map<std::string, std::string>* vmList) {
+    if(this->vmList != nullptr) {
+        delete this->vmList;
+    }
+
+    this->vmList = vmList;
+}
+
+std::pair<std::string, std::string> VBoxSTL::GetVMAtIndex(unsigned int index) {
+    if(index >= this->vmList->size()) {
+        throw(std::runtime_error("The requested index is out of range in the list of VM's"));
+    }
+
+    std::map<std::string, std::string>::iterator it = this->vmList->begin();
+    for(unsigned int i = 0; i < index; ++i) {
+        ++it;
+    }
+
+    return *it;
+}
+
 int VBoxSTL::OnExit() {
+    if(this->vmList != nullptr) {
+        delete this->vmList;
+    }
+
     delete this->vbtbIcon;
     return 0;
 }
