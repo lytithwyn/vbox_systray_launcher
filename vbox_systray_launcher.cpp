@@ -179,6 +179,7 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
 
         if(execvp(imageName, progArgs) < 0) {
             // TODO figure out how to handle an error here since we're in the child
+            // maybe have a special value to send over the pipe?
             std::cerr << "Execvp failed: " << strerror(errno) << std::endl;
             exit(-1);
         }
