@@ -166,8 +166,8 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     }
     va_end(argList);
 
-    // construct a sufficiently size array and load the image name as the first element of this array
-    // account for 1 extra element at being for image name, and 1 extra at end for null byte
+    // construct a sufficiently sized array and load the image name as the first element of this array
+    // account for 1 extra element at beginning for image name, and 1 extra at end for null byte
     char** progArgs = (char**)calloc(numInputArgs + 2, sizeof(char*));
     progArgs[0] = (char*)calloc(strlen(imageName) + 1, sizeof(char));
     strcpy(progArgs[0], imageName); // first element is image name
