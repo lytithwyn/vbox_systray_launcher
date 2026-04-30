@@ -6,6 +6,7 @@
 #include <cstring>
 #include <sstream>
 #include <regex>
+#include <exception>
 #include <wx/wx.h>
 #include <wx/taskbar.h>
 #include <wx/artprov.h>
@@ -15,7 +16,8 @@ wxDECLARE_EVENT(EVT_UPDATE_READY, wxCommandEvent);
 enum VBTBI_MENU_ID {
     MID_QUIT = 1001,
     MID_LAUNCH_VBOX,
-    MID_LAUNCH_VM = 1200
+    MID_LAUNCH_VM = 1200,
+    MID_END_LAUNCH_VM = 1300
 };
 
 enum APP_EVENT_ID {
@@ -44,7 +46,8 @@ class VBoxTaskBarIcon : public wxTaskBarIcon {
         VBoxTaskBarIcon(VBoxSTL* owner);
         virtual ~VBoxTaskBarIcon();
         virtual wxMenu *CreatePopupMenu();
-        void SetVMList(std::map<std::string, std::string> vmList);
+        void SetVMList(std::map<std::string, std::string>* vmList);
+        std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
 
     protected:
         VBoxSTL* owner;

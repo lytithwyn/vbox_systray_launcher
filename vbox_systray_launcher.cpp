@@ -13,7 +13,7 @@ VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_T
 
     Bind(wxEVT_MENU, &VBoxSTL::OnQuit, owner, MID_QUIT);
     Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVBoxApp, owner, MID_LAUNCH_VBOX);
-    Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVM, owner, MID_LAUNCH_VM);
+    Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVM, owner, MID_LAUNCH_VM, MID_END_LAUNCH_VM);
 }
 
 void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
@@ -22,11 +22,64 @@ void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
 }
 
 void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
-    return;
+    int vmIndex = event.GetId() - MID_LAUNCH_VM;
+
+    std::string guid;
+    try {
+        std::pair<std::string, std::string> vmPair = this->vbtbIcon->GetVMAtIndex(vmIndex);
+        guid = vmPair.first;
+    } catch(const std::runtime_error& e) {
+        wxMessageBox(e.what(), "Error", wxOK | wxICON_EXCLAMATION);
+    }
+
+    this->LaunchExe("vboxmanage", nullptr, "startvm", guid.c_str(), (void*)0);
 }
 
 void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
     this->ExitMainLoop();
+}
+
+wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
+    std::cout << "Building menu" << std::endl;
+    wxMenu* vmMenu = new wxMenu();
+    vmMenu->Append(MID_LAUNCH_VBOX, "Launch Virtualbox");
+    vmMenu->AppendSeparator();
+
+    // TODO figure out a better way to identify the VM to be launched
+    // We don't have the opportunity to add extra info, but if the list is changed
+    // while we are clicking in the menu there might be a difference between when
+    // this list gets built and when the event handler for launching the vm gets run
+    int vmIndex = 0;
+    for(auto& [guid, name] : *(this->vmList)) {
+        vmMenu->Append(MID_LAUNCH_VM + vmIndex, name);
+        ++vmIndex;
+    }
+
+    vmMenu->AppendSeparator();
+    vmMenu->Append(MID_QUIT, "Quit");
+
+    return vmMenu;
+}
+
+void VBoxTaskBarIcon::SetVMList(std::map<std::string, std::string>* vmList) {
+    if(this->vmList != nullptr) {
+        delete this->vmList;
+    }
+
+    this->vmList = vmList;
+}
+
+std::pair<std::string, std::string> VBoxTaskBarIcon::GetVMAtIndex(unsigned int index) {
+    if(index >= this->vmList->size()) {
+        throw(std::runtime_error("The requested index is out of range in the list of VM's"));
+    }
+
+    std::map<std::string, std::string>::iterator it = this->vmList->begin();
+    for(unsigned int i = 0; i < index; ++i) {
+        ++it;
+    }
+
+    return *it;
 }
 
 VBoxTaskBarIcon::~VBoxTaskBarIcon() {
@@ -37,15 +90,6 @@ VBoxTaskBarIcon::~VBoxTaskBarIcon() {
     if(this->vmList != nullptr) {
         delete this->vmList;
     }
-}
-
-wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
-    std::cout << "Building menu" << std::endl;
-    wxMenu* vmMenu = new wxMenu();
-    vmMenu->Append(MID_LAUNCH_VBOX, "Launch Virtualbox");
-    vmMenu->Append(MID_QUIT, "Quit");
-
-    return vmMenu;
 }
 
 wxBEGIN_EVENT_TABLE(VBoxSTL, wxApp)
@@ -100,7 +144,8 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     for(const auto& [first, second] : (*vmList)) {
         std::cout << "\tVM: " << first << " : " << second << std::endl;
     }
-    delete vmList;
+
+    this->vbtbIcon->SetVMList(vmList);
     this->timerMenuUpdate.StartOnce(5000);
 }
 
