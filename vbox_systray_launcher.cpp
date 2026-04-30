@@ -115,22 +115,25 @@ void VBoxSTL::LaunchExe(const char* imageName) {
 void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     // first, get our variable arguments
     // we'll iterate through one time to get the count, then again to build an array of the arguments
+    // notice, this will NOT count the final null byte - we will account for this later
     va_list argList;
     va_start(argList, readFD);
-    int numArgs = 0;
+    int numInputArgs = 0;
     while(va_arg(argList, const char*) != ((void*)0)) {
-        ++numArgs;
+        ++numInputArgs;
     }
     va_end(argList);
 
     // construct a sufficiently size array and load the image name as the first element of this array
-    char** progArgs = (char**)calloc(numArgs + 1, sizeof(char*));
+    // account for 1 extra element at being for image name, and 1 extra at end for null byte
+    char** progArgs = (char**)calloc(numInputArgs + 2, sizeof(char*));
     progArgs[0] = (char*)calloc(strlen(imageName) + 1, sizeof(char));
-    strcpy(progArgs[0], imageName);
+    strcpy(progArgs[0], imageName); // first element is image name
+    progArgs[numInputArgs+1] = ((char*)0); // last element is null/zero pointer
 
     // now copy in all the others
     va_start(argList, readFD);
-    for(int i = 0; i < numArgs; ++i) {
+    for(int i = 0; i < numInputArgs; ++i) {
         const char* thisArg = va_arg(argList, const char*);
         progArgs[i+1] = (char*)calloc(strlen(thisArg) + 1, sizeof(char));
         strcpy(progArgs[i+1], thisArg);
@@ -175,6 +178,7 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
 
         if(execvp(imageName, progArgs) < 0) {
             // TODO figure out how to handle an error here since we're in the child
+            std::cerr << "Execvp failed: " << strerror(errno) << std::endl;
             exit(-1);
         }
     }
@@ -184,21 +188,22 @@ wxThread::ExitCode VBoxManagerThread::Entry() {
     std::cout << "In manager thread" << std::endl;
 
     std::cout << "Attempting to read data from pipe" << std::endl;
-    int bytesRead = 0;
+    ssize_t bytesRead = 0;
     size_t readBufSize = 128;
     char readBuf[readBufSize];
     std::stringstream vbmOutput;
     while(true) {
         bytesRead = read(readFD, readBuf, readBufSize);
-        std::cout << "Got data" << std::endl;
-        if(bytesRead <= 0) {
+        std::cout << "Got [ " << bytesRead << " ] bytes of data" << std::endl;
+        if(bytesRead < 0) {
             // TODO error handling - probably fire an event to main thread
+            std::cerr << "Failed to read from pipe: " << strerror(errno) << std::endl;
             break;
         } else if(bytesRead == 0) {
             // EOF
             break;
         } else {
-            vbmOutput << readBuf;
+            vbmOutput.write(readBuf, bytesRead);
         }
     }
     close(readFD);
