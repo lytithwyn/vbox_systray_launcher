@@ -39,7 +39,6 @@ void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
 }
 
 wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
-    std::cout << "Building menu" << std::endl;
     wxMenu* vmMenu = new wxMenu();
     vmMenu->Append(MID_LAUNCH_VBOX, "Launch Virtualbox");
     vmMenu->AppendSeparator();
@@ -104,12 +103,11 @@ void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
 }
 
 void VBoxSTL::PerformVMListUpdate() {
-    std::cout << "Kicking off update thread" << std::endl;
     int readFD = -1;
     this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
     VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD);
     if(updateThread->Create() != wxTHREAD_NO_ERROR) {
-        std::cout << "Failed to create thread!" << std::endl;
+        std::cerr << "Failed to create thread!" << std::endl;
     }
     updateThread->Run();
 }
@@ -118,10 +116,6 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
     std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
-    for(const auto& [first, second] : (*vmList)) {
-        std::cout << "\tVM: " << first << " : " << second << std::endl;
-    }
-
     this->SetVMList(vmList);
     this->timerMenuUpdate.StartOnce(5000);
 }
@@ -253,8 +247,6 @@ bool VBoxManagerThread::MatchVMLine(std::string line, std::pair<std::string, std
 }
 
 wxThread::ExitCode VBoxManagerThread::Entry() {
-    std::cout << "In manager thread" << std::endl;
-
     std::cout << "Attempting to read data from pipe" << std::endl;
     ssize_t bytesRead = 0;
     size_t readBufSize = 128;
@@ -262,7 +254,6 @@ wxThread::ExitCode VBoxManagerThread::Entry() {
     std::stringstream vbmOutput;
     while(true) {
         bytesRead = read(readFD, readBuf, readBufSize);
-        std::cout << "Got [ " << bytesRead << " ] bytes of data" << std::endl;
         if(bytesRead < 0) {
             // TODO error handling - probably fire an event to main thread
             std::cerr << "Failed to read from pipe: " << strerror(errno) << std::endl;
