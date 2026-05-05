@@ -47,7 +47,7 @@ class VBoxTaskBarIcon : public wxTaskBarIcon {
         virtual ~VBoxTaskBarIcon();
         virtual wxMenu *CreatePopupMenu();
 
-    protected:
+    private:
         VBoxSTL* owner;
         wxIcon* iconImage;
 
