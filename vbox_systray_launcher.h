@@ -50,6 +50,8 @@ class VBoxTaskBarIcon : public wxTaskBarIcon {
     protected:
         VBoxSTL* owner;
         wxIcon* iconImage;
+
+        void OnLeftClick(wxTaskBarIconEvent& event);
 };
 
 class VBoxSTL : public wxApp {

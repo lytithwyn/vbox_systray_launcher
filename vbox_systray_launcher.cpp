@@ -13,6 +13,14 @@ VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_T
     Bind(wxEVT_MENU, &VBoxSTL::OnQuit, owner, MID_QUIT);
     Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVBoxApp, owner, MID_LAUNCH_VBOX);
     Bind(wxEVT_MENU, &VBoxSTL::OnLaunchVM, owner, MID_LAUNCH_VM, MID_END_LAUNCH_VM);
+    Bind(wxEVT_TASKBAR_LEFT_UP, &VBoxTaskBarIcon::OnLeftClick, this);
+}
+
+void VBoxTaskBarIcon::OnLeftClick(wxTaskBarIconEvent& WXUNUSED(event)) {
+    // for some reason this doesn't work
+    // if we attach to LEFT_DOWN it works, but the menu immediately appears and disappears
+    wxTaskBarIconEvent* clickEvent = new wxTaskBarIconEvent(wxEVT_TASKBAR_CLICK, this);
+    wxQueueEvent(this, clickEvent);
 }
 
 void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
