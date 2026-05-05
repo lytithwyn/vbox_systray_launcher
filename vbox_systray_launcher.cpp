@@ -49,9 +49,11 @@ wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
     // this list gets built and when the event handler for launching the vm gets run
     int vmIndex = 0;
     const std::map<std::string, std::string>* vmList = this->owner->GetVMList();
-    for(auto const& [guid, name] : *vmList) {
-        vmMenu->Append(MID_LAUNCH_VM + vmIndex, name);
-        ++vmIndex;
+    if(vmList->size() > 0) {
+        for(auto const& [guid, name] : *vmList) {
+            vmMenu->Append(MID_LAUNCH_VM + vmIndex, name);
+            ++vmIndex;
+        }
     }
 
     vmMenu->AppendSeparator();
