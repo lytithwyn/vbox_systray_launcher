@@ -3,6 +3,7 @@
 wxIMPLEMENT_APP(VBoxSTL);
 
 wxDEFINE_EVENT(EVT_UPDATE_READY, wxCommandEvent);
+wxDEFINE_EVENT(EVT_SHUTDOWN, wxCommandEvent);
 
 VBoxTaskBarIcon::VBoxTaskBarIcon(VBoxSTL* owner) : wxTaskBarIcon(wxTBI_DEFAULT_TYPE) {
     this->owner = owner;
@@ -43,7 +44,11 @@ void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
 }
 
 void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
-    this->ExitMainLoop();
+    if(this->updateRunning) {
+        this->doShutdown = true;
+    } else {
+        this->ExitMainLoop();
+    }
 }
 
 wxMenu* VBoxTaskBarIcon::CreatePopupMenu() {
@@ -78,11 +83,12 @@ VBoxTaskBarIcon::~VBoxTaskBarIcon() {
 }
 
 wxBEGIN_EVENT_TABLE(VBoxSTL, wxApp)
-    EVT_TIMER(AID_TIMER, VBoxSTL::OnUpdateTimer)
+    EVT_TIMER(AID_UPDATE_TIMER, VBoxSTL::OnUpdateTimer)
     EVT_COMMAND(wxID_ANY, EVT_UPDATE_READY, VBoxSTL::OnNewVMList)
+    EVT_COMMAND(wxID_ANY, EVT_SHUTDOWN, VBoxSTL::OnQuit)
 wxEND_EVENT_TABLE()
 
-VBoxSTL::VBoxSTL() : timerMenuUpdate(this, AID_TIMER) { };
+VBoxSTL::VBoxSTL() : timerMenuUpdate(this, AID_UPDATE_TIMER) { }
 
 bool VBoxSTL::OnInit() {
     if(!wxApp::OnInit()) {
@@ -101,6 +107,8 @@ bool VBoxSTL::OnInit() {
         return false;
     }
 
+    this->updateRunning = false;
+    this->doShutdown = false;
     this->vmList = nullptr;
     this->vbtbIcon = new VBoxTaskBarIcon(this);
     this->PerformVMListUpdate();
@@ -120,14 +128,22 @@ void VBoxSTL::PerformVMListUpdate() {
         std::cerr << "Failed to create thread!" << std::endl;
     }
     updateThread->Run();
+    this->updateRunning = true;
 }
 
 void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
+    this->updateRunning = false;
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
     std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
     this->SetVMList(vmList);
-    this->timerMenuUpdate.StartOnce(5000);
+    if(!this->doShutdown) {
+        this->timerMenuUpdate.StartOnce(5000);
+    } else {
+        wxCommandEvent* shutdownEvent = new wxCommandEvent(EVT_SHUTDOWN);
+        wxQueueEvent(this, shutdownEvent);
+        std::cout << "Sent shutdown event" << std::endl;
+    }
 }
 
 void VBoxSTL::SetVMList(std::map<std::string, std::string>* vmList) {

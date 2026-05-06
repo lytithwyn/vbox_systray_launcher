@@ -21,7 +21,7 @@ enum VBTBI_MENU_ID {
 };
 
 enum APP_EVENT_ID {
-    AID_TIMER
+    AID_UPDATE_TIMER,
 };
 
 class VBoxSTL;
@@ -69,6 +69,8 @@ class VBoxSTL : public wxApp {
         VBoxTaskBarIcon* vbtbIcon;
         wxTimer timerMenuUpdate;
         std::map<std::string, std::string>* vmList;
+        bool updateRunning;
+        bool doShutdown;
 
         void PerformVMListUpdate();
         std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
