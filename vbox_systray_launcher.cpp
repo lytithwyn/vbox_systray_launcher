@@ -49,7 +49,14 @@ void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
         this->utControl.controlCS.Enter();
         this->utControl.requestStop = true;
         this->utControl.controlCS.Leave();
+
+        // make sure any remaining child processes die
+        if(this->lastChildPID > 0) {
+            kill(this->lastChildPID, SIGTERM);
+        }
+        while(wait(NULL) != -1);
     } else {
+        std::cout << "Exiting cleanly" << std::endl;
         this->ExitMainLoop();
     }
 }
@@ -126,7 +133,7 @@ void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
 
 void VBoxSTL::PerformVMListUpdate() {
     int readFD = -1;
-    this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
+    this->lastChildPID = this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
     VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD, &(this->utControl));
     if(updateThread->Create() != wxTHREAD_NO_ERROR) {
         std::cerr << "Failed to create thread!" << std::endl;
@@ -137,6 +144,8 @@ void VBoxSTL::PerformVMListUpdate() {
 
 void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     this->updateRunning = false;
+    this->lastChildPID = -1;
+    while(wait(NULL) != -1);
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
     if(vmList != nullptr) { // we'll get nullptr if we asked the updater to shut down in the middle of it's operation
@@ -183,11 +192,11 @@ int VBoxSTL::OnExit() {
     return 0;
 }
 
-void VBoxSTL::LaunchExe(const char* imageName) {
+pid_t VBoxSTL::LaunchExe(const char* imageName) {
     return this->LaunchExe(imageName, nullptr, (void*) 0);
 }
 
-void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
+pid_t VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     // first, get our variable arguments
     // we'll iterate through one time to get the count, then again to build an array of the arguments
     // notice, this will NOT count the final null byte - we will account for this later
@@ -221,10 +230,11 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     if(wantsFD) {
         if(pipe(fds) != 0) {
             wxMessageBox("Failed to create pipes for the subprocess", "System Error", wxOK | wxICON_EXCLAMATION);
-            return;
+            return -1;
         }
     }
 
+    pid_t childPID = -1;
     pid_t forkResult = fork();
     if(forkResult < 0) {
         wxMessageBox("Failed to fork a child PID", "System Error", wxOK | wxICON_EXCLAMATION);
@@ -233,7 +243,6 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
             close(fds[1]);
             *readFD = -1;
         }
-        return;
     } else if(forkResult > 0) {
         // we're in the parent
         close(fds[1]); // close the writing end
@@ -241,7 +250,7 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
             // we have gotten the pipe set up, we've successfully forked, and the caller wants the read FD
             *readFD = fds[0];
         }
-        return;
+        childPID = forkResult;
     } else if(forkResult == 0) {
         // we're in the child
         close(fds[0]); // close the reading end
@@ -258,6 +267,8 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
             exit(-1);
         }
     }
+
+    return childPID;
 }
 
 VBoxManagerThread::VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD, UpdateThreadControl* utControl) {

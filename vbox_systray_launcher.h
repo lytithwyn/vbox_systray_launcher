@@ -1,6 +1,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <map>
 #include <string>
 #include <cstring>
@@ -78,13 +79,14 @@ class VBoxSTL : public wxApp {
         bool updateRunning;
         bool doShutdown;
         UpdateThreadControl utControl;
+        pid_t lastChildPID;
 
         void PerformVMListUpdate();
         std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
-        void LaunchExe(const char* imageName);
-        void LaunchExe(const char* imageName, int* readFD, ...);
+        pid_t LaunchExe(const char* imageName);
+        pid_t LaunchExe(const char* imageName, int* readFD, ...);
 
     wxDECLARE_EVENT_TABLE();
 };
