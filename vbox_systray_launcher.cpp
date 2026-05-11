@@ -25,7 +25,10 @@ void VBoxTaskBarIcon::OnLeftClick(wxTaskBarIconEvent& WXUNUSED(event)) {
 }
 
 void VBoxSTL::OnLaunchVBoxApp(wxCommandEvent& WXUNUSED(event)) {
-    this->LaunchExe("virtualbox");
+    pid_t pid = this->LaunchExe("virtualbox");
+    if(pid > 0) {
+        this->backgroundChildren.push_back(pid);
+    }
     return;
 }
 
@@ -40,7 +43,11 @@ void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
         wxMessageBox(e.what(), "Error", wxOK | wxICON_EXCLAMATION);
     }
 
-    this->LaunchExe("vboxmanage", nullptr, "startvm", guid.c_str(), (void*)0);
+    pid_t pid = this->LaunchExe("vboxmanage", nullptr, "startvm", guid.c_str(), (void*)0);
+    if(pid > 0) {
+        this->backgroundChildren.push_back(pid);
+    }
+    return;
 }
 
 void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
@@ -100,11 +107,12 @@ VBoxTaskBarIcon::~VBoxTaskBarIcon() {
 
 wxBEGIN_EVENT_TABLE(VBoxSTL, wxApp)
     EVT_TIMER(AID_UPDATE_TIMER, VBoxSTL::OnUpdateTimer)
+    EVT_TIMER(AID_CHILD_CLEANUP_TIMER, VBoxSTL::OnCleanupBackgroundChildren)
     EVT_COMMAND(wxID_ANY, EVT_UPDATE_READY, VBoxSTL::OnNewVMList)
     EVT_COMMAND(wxID_ANY, EVT_SHUTDOWN, VBoxSTL::OnQuit)
 wxEND_EVENT_TABLE()
 
-VBoxSTL::VBoxSTL() : timerMenuUpdate(this, AID_UPDATE_TIMER) { }
+VBoxSTL::VBoxSTL() : timerMenuUpdate(this, AID_UPDATE_TIMER), timerChildCleanup(this, AID_CHILD_CLEANUP_TIMER) { }
 
 bool VBoxSTL::OnInit() {
     if(!wxApp::OnInit()) {
@@ -129,12 +137,39 @@ bool VBoxSTL::OnInit() {
     this->vmList = nullptr;
     this->vbtbIcon = new VBoxTaskBarIcon(this);
     this->PerformVMListUpdate();
+    this->timerChildCleanup.StartOnce(1000);
 
     return true;
 }
 
 void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
     this->PerformVMListUpdate();
+}
+
+void VBoxSTL::OnCleanupBackgroundChildren(wxTimerEvent& WXUNUSED(event)) {
+    std::erase_if(this->backgroundChildren, [](const auto& pid) {
+        pid_t retVal = waitpid(pid, NULL, WNOHANG);
+
+        bool remove = false;
+        if(retVal == -1) {
+            if(errno = ECHILD) {
+                std::cout << "Removing pid for process that either doesn't exist or isn't our child (shouldn't happen): " << retVal << std::endl;
+                remove = true;
+            }
+        } else if(retVal == 0) {
+            // this pid is still running
+        } else {
+            std::cout << "Removing terminated child: " << retVal << std::endl;
+            // the child terminated
+            remove = true;
+        }
+
+        return remove;
+    });
+
+    if(!this->doShutdown) {
+        this->timerChildCleanup.StartOnce(1000);
+    }
 }
 
 void VBoxSTL::PerformVMListUpdate() {

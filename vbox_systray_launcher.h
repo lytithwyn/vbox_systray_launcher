@@ -23,6 +23,7 @@ enum VBTBI_MENU_ID {
 
 enum APP_EVENT_ID {
     AID_UPDATE_TIMER,
+    AID_CHILD_CLEANUP_TIMER
 };
 
 struct UpdateThreadControl {
@@ -75,16 +76,19 @@ class VBoxSTL : public wxApp {
     private:
         VBoxTaskBarIcon* vbtbIcon;
         wxTimer timerMenuUpdate;
+        wxTimer timerChildCleanup;
         std::map<std::string, std::string>* vmList;
         bool updateRunning;
         bool doShutdown;
         UpdateThreadControl utControl;
         pid_t lastUpdateChildPID;
+        std::vector<pid_t> backgroundChildren;
 
         void PerformVMListUpdate();
         std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
         void OnUpdateTimer(wxTimerEvent& event);
         void OnNewVMList(wxCommandEvent& event);
+        void OnCleanupBackgroundChildren(wxTimerEvent& event);
         pid_t LaunchExe(const char* imageName);
         pid_t LaunchExe(const char* imageName, int* readFD, ...);
 

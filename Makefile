@@ -1,4 +1,4 @@
-CXXFLAGS+=`wx-config --cflags` -g
+CXXFLAGS+=`wx-config --cflags` -g -std=c++20
 LDFLAGS=`wx-config --libs`
 
 all: vbox_systray_launcher
