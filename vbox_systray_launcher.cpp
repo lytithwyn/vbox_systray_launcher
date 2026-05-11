@@ -56,10 +56,10 @@ void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
         // and this time this->updateRunning will be false
     } else {
         // make sure any remaining child process dies
-        if(this->lastChildPID > 0) {
-            kill(this->lastChildPID, SIGTERM);
-            waitpid(this->lastChildPID, NULL, 0);
-            this->lastChildPID = -1;
+        if(this->lastUpdateChildPID > 0) {
+            kill(this->lastUpdateChildPID, SIGTERM);
+            waitpid(this->lastUpdateChildPID, NULL, 0);
+            this->lastUpdateChildPID = -1;
         }
 
         std::cout << "Exiting cleanly" << std::endl;
@@ -139,7 +139,7 @@ void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
 
 void VBoxSTL::PerformVMListUpdate() {
     int readFD = -1;
-    this->lastChildPID = this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
+    this->lastUpdateChildPID = this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
     VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD, &(this->utControl));
     if(updateThread->Create() != wxTHREAD_NO_ERROR) {
         std::cerr << "Failed to create thread!" << std::endl;
@@ -150,9 +150,9 @@ void VBoxSTL::PerformVMListUpdate() {
 
 void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     this->updateRunning = false;
-    if(this->lastChildPID > 0) {
-        waitpid(this->lastChildPID, NULL, 0);
-        this->lastChildPID = -1;
+    if(this->lastUpdateChildPID > 0) {
+        waitpid(this->lastUpdateChildPID, NULL, 0);
+        this->lastUpdateChildPID = -1;
     }
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 

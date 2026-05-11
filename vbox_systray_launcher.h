@@ -79,7 +79,7 @@ class VBoxSTL : public wxApp {
         bool updateRunning;
         bool doShutdown;
         UpdateThreadControl utControl;
-        pid_t lastChildPID;
+        pid_t lastUpdateChildPID;
 
         void PerformVMListUpdate();
         std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
