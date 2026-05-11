@@ -46,6 +46,9 @@ void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
 void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
     if(this->updateRunning) {
         this->doShutdown = true;
+        this->utControl.controlCS.Enter();
+        this->utControl.requestStop = true;
+        this->utControl.controlCS.Leave();
     } else {
         this->ExitMainLoop();
     }
@@ -107,6 +110,7 @@ bool VBoxSTL::OnInit() {
         return false;
     }
 
+    this->utControl.requestStop = false; // we can do this without locking because we haven't given it to anyone
     this->updateRunning = false;
     this->doShutdown = false;
     this->vmList = nullptr;
@@ -123,7 +127,7 @@ void VBoxSTL::OnUpdateTimer(wxTimerEvent& WXUNUSED(event)) {
 void VBoxSTL::PerformVMListUpdate() {
     int readFD = -1;
     this->LaunchExe("vboxmanage", &readFD, "list", "vms", (void*)0);
-    VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD);
+    VBoxManagerThread* updateThread = new VBoxManagerThread(this, EVT_UPDATE_READY, readFD, &(this->utControl));
     if(updateThread->Create() != wxTHREAD_NO_ERROR) {
         std::cerr << "Failed to create thread!" << std::endl;
     }
@@ -135,8 +139,11 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     this->updateRunning = false;
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
-    std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
-    this->SetVMList(vmList);
+    if(vmList != nullptr) { // we'll get nullptr if we asked the updater to shut down in the middle of it's operation
+        std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
+        this->SetVMList(vmList);
+    }
+
     if(!this->doShutdown) {
         this->timerMenuUpdate.StartOnce(5000);
     } else {
@@ -253,10 +260,11 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
     }
 }
 
-VBoxManagerThread::VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD) {
+VBoxManagerThread::VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD, UpdateThreadControl* utControl) {
     this->owner = owner;
     this->eventID = eventID;
     this->readFD = readFD;
+    this->utControl = utControl;
     this->regexVMLine = std::regex("\"(.*)\" (\\{.*\\})");
 };
 
@@ -278,7 +286,16 @@ wxThread::ExitCode VBoxManagerThread::Entry() {
     size_t readBufSize = 128;
     char readBuf[readBufSize];
     std::stringstream vbmOutput;
+    bool abort = false;
     while(true) {
+        this->utControl->controlCS.Enter();
+        abort = this->utControl->requestStop;
+        this->utControl->controlCS.Leave();
+        if(abort) {
+            std::cout << "Thread got abort request" << std::endl;
+            break;
+        }
+
         bytesRead = read(readFD, readBuf, readBufSize);
         if(bytesRead < 0) {
             // TODO error handling - probably fire an event to main thread
@@ -293,11 +310,14 @@ wxThread::ExitCode VBoxManagerThread::Entry() {
     }
     close(readFD);
 
-    std::map<std::string, std::string>* vmList = new std::map<std::string, std::string>();
-    for(std::string line; std::getline(vbmOutput, line); ) {
-        std::pair<std::string, std::string> outPair;
-        if(this->MatchVMLine(line, outPair)) {
-            (*vmList)[outPair.second] = outPair.first;
+    std::map<std::string, std::string>* vmList = nullptr;
+    if(!abort) {
+        vmList = new std::map<std::string, std::string>();
+        for(std::string line; std::getline(vbmOutput, line); ) {
+            std::pair<std::string, std::string> outPair;
+            if(this->MatchVMLine(line, outPair)) {
+                (*vmList)[outPair.second] = outPair.first;
+            }
         }
     }
 

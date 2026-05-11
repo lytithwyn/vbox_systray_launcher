@@ -24,11 +24,16 @@ enum APP_EVENT_ID {
     AID_UPDATE_TIMER,
 };
 
+struct UpdateThreadControl {
+    wxCriticalSection controlCS;
+    bool requestStop;
+};
+
 class VBoxSTL;
 
 class VBoxManagerThread : public wxThread {
     public:
-        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD);
+        VBoxManagerThread(wxEvtHandler* owner, int eventID, int readFD, UpdateThreadControl* utControl);
         virtual wxThread::ExitCode Entry();
 
     private:
@@ -38,6 +43,7 @@ class VBoxManagerThread : public wxThread {
         wxEvtHandler* owner;
         int eventID;
         int readFD;
+        UpdateThreadControl* utControl;
         std::regex regexVMLine;
 };
 
@@ -71,6 +77,7 @@ class VBoxSTL : public wxApp {
         std::map<std::string, std::string>* vmList;
         bool updateRunning;
         bool doShutdown;
+        UpdateThreadControl utControl;
 
         void PerformVMListUpdate();
         std::pair<std::string, std::string> GetVMAtIndex(unsigned int index);
