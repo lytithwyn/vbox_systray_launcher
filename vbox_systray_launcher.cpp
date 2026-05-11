@@ -244,8 +244,8 @@ void VBoxSTL::LaunchExe(const char* imageName, int* readFD, ...) {
         return;
     } else if(forkResult == 0) {
         // we're in the child
+        close(fds[0]); // close the reading end
         if(wantsFD) {
-            close(fds[0]); // close the reading end
             dup2(fds[1], STDOUT_FILENO);
             dup2(fds[1], STDERR_FILENO);
             close(fds[1]);
