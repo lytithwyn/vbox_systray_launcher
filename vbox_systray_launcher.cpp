@@ -58,8 +58,9 @@ void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
         // make sure any remaining child process dies
         if(this->lastChildPID > 0) {
             kill(this->lastChildPID, SIGTERM);
+            waitpid(this->lastChildPID, NULL, 0);
+            this->lastChildPID = -1;
         }
-        while(wait(NULL) != -1);
 
         std::cout << "Exiting cleanly" << std::endl;
         this->ExitMainLoop();
@@ -149,8 +150,10 @@ void VBoxSTL::PerformVMListUpdate() {
 
 void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     this->updateRunning = false;
-    this->lastChildPID = -1;
-    while(wait(NULL) != -1);
+    if(this->lastChildPID > 0) {
+        waitpid(this->lastChildPID, NULL, 0);
+        this->lastChildPID = -1;
+    }
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
     if(vmList != nullptr) { // we'll get nullptr if we asked the updater to shut down in the middle of its operation
