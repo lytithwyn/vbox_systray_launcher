@@ -45,17 +45,22 @@ void VBoxSTL::OnLaunchVM(wxCommandEvent& event) {
 
 void VBoxSTL::OnQuit(wxCommandEvent& WXUNUSED(event)) {
     if(this->updateRunning) {
-        this->doShutdown = true;
+        this->doShutdown = true; // this makes sure OnNewVMList() doesn't kick off another update timer
         this->utControl.controlCS.Enter();
-        this->utControl.requestStop = true;
+        this->utControl.requestStop = true; // the thread that builds our updates watches this
         this->utControl.controlCS.Leave();
 
-        // make sure any remaining child processes die
+        // we bail out on the quit for now since we're in the middle of an update
+        // the next time OnNewVMList() get's called (signalling that our updater thread
+        // has gotten the memo that we want to close) it will call this method again for us
+        // and this time this->updateRunning will be false
+    } else {
+        // make sure any remaining child process dies
         if(this->lastChildPID > 0) {
             kill(this->lastChildPID, SIGTERM);
         }
         while(wait(NULL) != -1);
-    } else {
+
         std::cout << "Exiting cleanly" << std::endl;
         this->ExitMainLoop();
     }
@@ -148,7 +153,7 @@ void VBoxSTL::OnNewVMList(wxCommandEvent& event) {
     while(wait(NULL) != -1);
     std::map<std::string, std::string>* vmList = (std::map<std::string, std::string>*)event.GetClientData();
 
-    if(vmList != nullptr) { // we'll get nullptr if we asked the updater to shut down in the middle of it's operation
+    if(vmList != nullptr) { // we'll get nullptr if we asked the updater to shut down in the middle of its operation
         std::cout << "Got new vm list: " << std::endl << "\t num vms's: " << vmList->size() << std::endl;
         this->SetVMList(vmList);
     }
